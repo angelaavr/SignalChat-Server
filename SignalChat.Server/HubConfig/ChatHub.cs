@@ -12,7 +12,6 @@ namespace SignalChat.Server.HubConfig
             _connection = connection;
         }
 
-        //Connection Lifetime Events
         public override Task OnConnectedAsync()
         {
             Clients.All.SendAsync("OnConnected", "OnConnected is working");
@@ -26,8 +25,13 @@ namespace SignalChat.Server.HubConfig
                 return base.OnDisconnectedAsync(exception);
             }
 
+            Message message = new Message();
+            message.User = "SignalChat Bot";
+            message.Content = $"{userRoomConnection.User} has left the group";
+            message.MessageTime = DateTime.Now.ToString();
+
             Clients.Group(userRoomConnection.Room!)
-                .SendAsync("ReceiveMessage", "SignalChat Bot", $"{userRoomConnection.User} has left the group", DateTime.Now);
+                .SendAsync("ReceiveMessage", message);
 
             _connection.Remove(Context.ConnectionId);
             Groups.RemoveFromGroupAsync(Context.ConnectionId, userRoomConnection.Room!);
@@ -43,18 +47,26 @@ namespace SignalChat.Server.HubConfig
 
             _connection[Context.ConnectionId] = userRoomConnection;
 
+            Message message = new Message();
+            message.User = "SignalChat Bot";
+            message.Content = $"{userRoomConnection.User} has joined the group";
+            message.MessageTime = DateTime.Now.ToString();
+
             await Clients.Group(userRoomConnection.Room!)
-                .SendAsync("ReceiveMessage", "SignalChat Bot", $"{userRoomConnection.User} has joined the group", DateTime.Now);
+                .SendAsync("ReceiveMessage", message);
 
             await GetAndSendConnectedUser(userRoomConnection.Room!);
         }
 
-        public async Task SendMessage(string message)
+        public async Task SendMessage(Message message)
         {
             if (_connection.TryGetValue(Context.ConnectionId, out UserRoomConnection? userRoomConnection))
             {
+                message.User = userRoomConnection.User;
+                message.MessageTime = DateTime.Now.ToString();
+
                 await Clients.Group(userRoomConnection.Room!)
-                    .SendAsync("ReceiveMessage", userRoomConnection.User, message, DateTime.Now);
+                    .SendAsync("ReceiveMessage", message);
             }
         }
 
